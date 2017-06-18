@@ -73,215 +73,214 @@ end
 
 hook.Add( "HUDPaint", "SimpleHUD", function()
 	
-	if Simple:GetBool() then
+	if Simple:GetBool() then return end
 
-		local PlySpeed, SpeedPercent = 0, 0
-		local PlyAmmo, PlySecondaryAmmo, TotalAmmo = 0, 0, 0
-		local Driving = LocalPlayer():InVehicle()
+	local PlySpeed, SpeedPercent = 0, 0
+	local PlyAmmo, PlySecondaryAmmo, TotalAmmo = 0, 0, 0
+	local Driving = LocalPlayer():InVehicle()
 
-		if Driving then
-			PlySpeed = math.floor(LocalPlayer():GetVehicle():GetVelocity():Length() / MaxDriveSpeed:GetFloat() * 200)
-		else
-			PlySpeed = math.floor(LocalPlayer():GetVelocity():Length() / MaxRunSpeed:GetFloat() * 200)
+	if Driving then
+		PlySpeed = math.floor(LocalPlayer():GetVehicle():GetVelocity():Length() / MaxDriveSpeed:GetFloat() * 200)
+	else
+		PlySpeed = math.floor(LocalPlayer():GetVelocity():Length() / MaxRunSpeed:GetFloat() * 200)
+	end
+
+	local PlyHealth = math.floor(LocalPlayer():Health() / LocalPlayer():GetMaxHealth() * 200)
+
+	if PlyHealth < 0 then PlyHealth = 0 end
+
+	local PlyArmor = math.floor(LocalPlayer():Armor() / 100 * 200)
+
+	if Clamp:GetBool() then
+		PlySpeed = math.Clamp( PlySpeed, 0, 200 )
+		PlyHealth = math.Clamp( PlyHealth, 0, 200 )
+		PlyArmor = math.Clamp( PlyArmor, 0, 200 )
+	end
+
+	local Weapon = LocalPlayer():GetActiveWeapon()
+	if Weapon ~= NULL then
+		PlyAmmo = Weapon:Clip1()
+		PlySecondaryAmmo = LocalPlayer():GetAmmoCount( Weapon:GetSecondaryAmmoType() )
+		TotalAmmo = LocalPlayer():GetAmmoCount( Weapon:GetPrimaryAmmoType() )
+	end
+
+	if Driving then
+		local AmmoType, ClipSize, Count = LocalPlayer():GetVehicle():GetAmmo()
+		if Count ~= nil then
+			PlyAmmo = -1
+			TotalAmmo = Count -- Pretty hacky
+			PlySecondaryAmmo = -1
 		end
+	end
 
-		local PlyHealth = math.floor(LocalPlayer():Health() / LocalPlayer():GetMaxHealth() * 200)
+	local Up = Vertical:GetBool()
 
-		if PlyHealth < 0 then PlyHealth = 0 end
+	if PlyHealth <= 25 then
+		HealthAlpha = math.Clamp( HealthAlpha - 10, 0, 255 ) 
+	else
+		HealthAlpha = math.Clamp( HealthAlpha + 10, 0, 255 )
+	end
 
-		local PlyArmor = math.floor(LocalPlayer():Armor() / 100 * 200)
+	if PlyArmor <= 40 then
+		ArmorAlpha = math.Clamp( ArmorAlpha - 10, 0, 255 )
+	else
+		ArmorAlpha = math.Clamp( ArmorAlpha + 10, 0, 255 )
+	end
 
-		if Clamp:GetBool() then
-			PlySpeed = math.Clamp( PlySpeed, 0, 200 )
-			PlyHealth = math.Clamp( PlyHealth, 0, 200 )
-			PlyArmor = math.Clamp( PlyArmor, 0, 200 )
-		end
+	if PlySpeed <= 20 then
+		SpeedAlpha = math.Clamp( SpeedAlpha - 50, 0, 255 )
+	else
+		SpeedAlpha = math.Clamp( SpeedAlpha + 50, 0, 255 )
+	end
 
-		local Weapon = LocalPlayer():GetActiveWeapon()
-		if Weapon ~= NULL then
-			PlyAmmo = Weapon:Clip1()
-			PlySecondaryAmmo = LocalPlayer():GetAmmoCount( Weapon:GetSecondaryAmmoType() )
-			TotalAmmo = LocalPlayer():GetAmmoCount( Weapon:GetPrimaryAmmoType() )
-		end
+	draw.NoTexture()
+	surface.SetFont( "DermaDefaultBold" )
 
-		if Driving then
-			local AmmoType, ClipSize, Count = LocalPlayer():GetVehicle():GetAmmo()
-			if Count ~= nil then
-				PlyAmmo = -1
-				TotalAmmo = Count -- Pretty hacky
-				PlySecondaryAmmo = -1
-			end
-		end
+	if Up then
+		draw.RoundedBox( 8, 5, ScrH() - 235, 120, 230, string.ToColor( BGColor:GetString() ) )
+	else
+		draw.RoundedBox( 8, 5, ScrH() - 125, 255, 120, string.ToColor( BGColor:GetString() ) )
+	end
 
-		local Up = Vertical:GetBool()
+	-- The speed
 
-		if PlyHealth <= 25 then
-			HealthAlpha = math.Clamp( HealthAlpha - 10, 0, 255 ) 
-		else
-			HealthAlpha = math.Clamp( HealthAlpha + 10, 0, 255 )
-		end
+	local drivingcol, walkingcol = string.ToColor( CarColor:GetString() ), string.ToColor( SpeedColor:GetString() )
 
-		if PlyArmor <= 40 then
-			ArmorAlpha = math.Clamp( ArmorAlpha - 10, 0, 255 )
-		else
-			ArmorAlpha = math.Clamp( ArmorAlpha + 10, 0, 255 )
-		end
+	if Driving then
+		surface.SetDrawColor( drivingcol )
+	else
+		surface.SetDrawColor( walkingcol )
+	end
 
-		if PlySpeed <= 20 then
-			SpeedAlpha = math.Clamp( SpeedAlpha - 50, 0, 255 )
-		else
-			SpeedAlpha = math.Clamp( SpeedAlpha + 50, 0, 255 )
-		end
+	if Up then
+		surface.DrawRect( 15, ScrH() - 15 - PlySpeed, 30, PlySpeed )
+		DrawSpeedRect( 15 + 15, ScrH() - PlySpeed - 5, walkingcol, drivingcol, SpeedAlpha )
+	else
+		surface.DrawRect( 15, ScrH() - 45, PlySpeed, 30 )
+		DrawSpeedRect( PlySpeed - 5, ScrH() - 40, walkingcol, drivingcol, SpeedAlpha )
+	end
 
-		draw.NoTexture()
-		surface.SetFont( "DermaDefaultBold" )
+	if Driving then
+		surface.SetTextColor( drivingcol.r + 60, drivingcol.g + 60, drivingcol.b + 60,  drivingcol.a )
+	else
+		surface.SetTextColor( walkingcol.r + 60, walkingcol.g + 60, walkingcol.b + 60,  walkingcol.a )
+	end
+
+	local w, h = surface.GetTextSize( math.floor( PlySpeed / 2 ) .. "%" )
+
+	if Up then
+		surface.SetTextPos( 30 - w / 2, ScrH() - PlySpeed - 30 )
+	else
+		surface.SetTextPos( PlySpeed + w / 2 + 5, ScrH() - 30 - h / 2 )
+	end
+
+	surface.DrawText( math.floor( PlySpeed / 2 ) .. "%" )
+
+	-- The health
+
+	local healthcol = string.ToColor( HealthColor:GetString() )
+
+	surface.SetDrawColor( healthcol )
+
+	if Up then
+		surface.DrawRect( 50, ScrH() - 15 - PlyHealth, 30, PlyHealth )
+		DrawHealthRect( 65, ScrH() - PlyHealth - 5, healthcol, HealthAlpha )
+	else
+		surface.DrawRect( 15, ScrH() - 80, PlyHealth, 30 )
+		DrawHealthRect( PlyHealth - 5, ScrH() - 75, healthcol, HealthAlpha )
+	end
+
+	if math.floor( PlyHealth / 2 ) >= 20 then
+		surface.SetTextColor( healthcol.r + 60, healthcol.g + 60, healthcol.b + 60,  healthcol.a )
+	else
+		surface.SetTextColor( healthcol.r + 255, healthcol.g, healthcol.b,  healthcol.a )
+	end
+
+	local w, h = surface.GetTextSize( math.floor( PlyHealth / 2 ) .. "%" )
+
+	if Up then
+		surface.SetTextPos( 65 - w / 2, ScrH() - PlyHealth - 30 )
+	else
+		surface.SetTextPos( PlyHealth + w / 2 + 5, ScrH() - 65 - h / 2 )
+	end
+
+	surface.DrawText( math.floor( PlyHealth / 2 ) .. "%" )
+
+	-- The armor
+
+	local armorcol = string.ToColor( ArmorColor:GetString() )
+
+	surface.SetDrawColor( armorcol )
+
+	if Up then
+		surface.DrawRect( 85, ScrH() - 15 - PlyArmor, 30, PlyArmor )
+		DrawArmorRect( 100, ScrH() - PlyArmor - 5, armorcol, ArmorAlpha )
+	else
+		surface.DrawRect( 15, ScrH() - 115, PlyArmor, 30 )
+		DrawArmorRect( PlyArmor - 5, ScrH() - 110, armorcol, ArmorAlpha )
+	end
+
+	surface.SetTextColor( armorcol.r + 60, armorcol.g + 60, armorcol.b + 60,  healthcol.a )
+
+	local w, h = surface.GetTextSize( math.floor( PlyArmor / 2 ) .. "%" )
+
+	if Up then
+		surface.SetTextPos( 100 - w / 2, ScrH() - PlyArmor - 30 )
+	else
+		surface.SetTextPos( PlyArmor + w / 2 + 5, ScrH() - 100 - h / 2 )
+	end
+	surface.DrawText( math.floor( PlyArmor / 2 ) .. "%" )
+
+	-- The ammo
+
+	if ShowAmmo:GetBool() and ( TotalAmmo > 0 or PlySecondaryAmmo > 0 ) then
 
 		if Up then
-			draw.RoundedBox( 8, 5, ScrH() - 235, 120, 230, string.ToColor( BGColor:GetString() ) )
+			draw.RoundedBox( 8, 5, ScrH() - 300, 120, 60, string.ToColor( GunBGColor:GetString() ) )
 		else
-			draw.RoundedBox( 8, 5, ScrH() - 125, 255, 120, string.ToColor( BGColor:GetString() ) )
+			draw.RoundedBox( 8, 270, ScrH() - 125, 130, 120, string.ToColor( GunBGColor:GetString() ) )
 		end
 
-		--The speed
-
-		local drivingcol, walkingcol = string.ToColor( CarColor:GetString() ), string.ToColor( SpeedColor:GetString() )
-
-		if Driving then
-			surface.SetDrawColor( drivingcol )
-		else
-			surface.SetDrawColor( walkingcol )
-		end
+		local w, h = surface.GetTextSize( PlyAmmo .. " / " .. TotalAmmo )
+		surface.SetTextColor( 255, 255, 255, 255 )
 
 		if Up then
-			surface.DrawRect( 15, ScrH() - 15 - PlySpeed, 30, PlySpeed )
-			DrawSpeedRect( 15 + 15, ScrH() - PlySpeed - 5, walkingcol, drivingcol, SpeedAlpha )
-		else
-			surface.DrawRect( 15, ScrH() - 45, PlySpeed, 30 )
-			DrawSpeedRect( PlySpeed - 5, ScrH() - 40, walkingcol, drivingcol, SpeedAlpha )
-		end
-
-		if Driving then
-			surface.SetTextColor( drivingcol.r + 60, drivingcol.g + 60, drivingcol.b + 60,  drivingcol.a )
-		else
-			surface.SetTextColor( walkingcol.r + 60, walkingcol.g + 60, walkingcol.b + 60,  walkingcol.a )
-		end
-
-		local w, h = surface.GetTextSize( math.floor( PlySpeed / 2 ) .. "%" )
-
-		if Up then
-			surface.SetTextPos( 30 - w / 2, ScrH() - PlySpeed - 30 )
-		else
-			surface.SetTextPos( PlySpeed + w / 2 + 5, ScrH() - 30 - h / 2 )
-		end
-
-		surface.DrawText( math.floor( PlySpeed / 2 ) .. "%" )
-
-		--The health
-
-		local healthcol = string.ToColor( HealthColor:GetString() )
-
-		surface.SetDrawColor( healthcol )
-
-		if Up then
-			surface.DrawRect( 50, ScrH() - 15 - PlyHealth, 30, PlyHealth )
-			DrawHealthRect( 65, ScrH() - PlyHealth - 5, healthcol, HealthAlpha )
-		else
-			surface.DrawRect( 15, ScrH() - 80, PlyHealth, 30 )
-			DrawHealthRect( PlyHealth - 5, ScrH() - 75, healthcol, HealthAlpha )
-		end
-
-		if math.floor( PlyHealth / 2 ) >= 20 then
-			surface.SetTextColor( healthcol.r + 60, healthcol.g + 60, healthcol.b + 60,  healthcol.a )
-		else
-			surface.SetTextColor( healthcol.r + 255, healthcol.g, healthcol.b,  healthcol.a )
-		end
-
-		local w, h = surface.GetTextSize( math.floor( PlyHealth / 2 ) .. "%" )
-
-		if Up then
-			surface.SetTextPos( 65 - w / 2, ScrH() - PlyHealth - 30 )
-		else
-			surface.SetTextPos( PlyHealth + w / 2 + 5, ScrH() - 65 - h / 2 )
-		end
-
-		surface.DrawText( math.floor( PlyHealth / 2 ) .. "%" )
-
-		--The armor
-
-		local armorcol = string.ToColor( ArmorColor:GetString() )
-
-		surface.SetDrawColor( armorcol )
-
-		if Up then
-			surface.DrawRect( 85, ScrH() - 15 - PlyArmor, 30, PlyArmor )
-			DrawArmorRect( 100, ScrH() - PlyArmor - 5, armorcol, ArmorAlpha )
-		else
-			surface.DrawRect( 15, ScrH() - 115, PlyArmor, 30 )
-			DrawArmorRect( PlyArmor - 5, ScrH() - 110, armorcol, ArmorAlpha )
-		end
-
-		surface.SetTextColor( armorcol.r + 60, armorcol.g + 60, armorcol.b + 60,  healthcol.a )
-
-		local w, h = surface.GetTextSize( math.floor( PlyArmor / 2 ) .. "%" )
-
-		if Up then
-			surface.SetTextPos( 100 - w / 2, ScrH() - PlyArmor - 30 )
-		else
-			surface.SetTextPos( PlyArmor + w / 2 + 5, ScrH() - 100 - h / 2 )
-		end
-		surface.DrawText( math.floor( PlyArmor / 2 ) .. "%" )
-
-		--The ammo
-
-		if ShowAmmo:GetBool() and ( TotalAmmo > 0 or PlySecondaryAmmo > 0 ) then
-
-			if Up then
-				draw.RoundedBox( 8, 5, ScrH() - 300, 120, 60, string.ToColor( GunBGColor:GetString() ) )
-			else
-				draw.RoundedBox( 8, 270, ScrH() - 125, 130, 120, string.ToColor( GunBGColor:GetString() ) )
-			end
-
-			local w, h = surface.GetTextSize( PlyAmmo .. " / " .. TotalAmmo )
-			surface.SetTextColor( 255, 255, 255, 255 )
-
-			if Up then
-				if PlySecondaryAmmo > 0 and TotalAmmo > 0 then
-					surface.SetTextPos( 50, ScrH() - 280 - h / 2 )
-				else
-					surface.SetTextPos( 50, ScrH() - 270 - h / 2 )
-				end
-			else
-				if PlySecondaryAmmo > 0 and TotalAmmo > 0 then
-					surface.SetTextPos( 320, ScrH() - 75 - h / 2 )
-				else
-					surface.SetTextPos( 320, ScrH() - 65 - h / 2 )
-				end
-			end
-
-			if PlyAmmo < 0 then
-				surface.DrawText( TotalAmmo )
-			else
-				if TotalAmmo > 0 then
-					surface.DrawText( PlyAmmo .. " / " .. TotalAmmo )
-				else
-					surface.DrawText( PlySecondaryAmmo )
-				end
-			end
-
 			if PlySecondaryAmmo > 0 and TotalAmmo > 0 then
-				if Up then
-					surface.SetTextPos( 50, ScrH() - 270 )
-				else
-					surface.SetTextPos( 320, ScrH() - 60 )
-				end
+				surface.SetTextPos( 50, ScrH() - 280 - h / 2 )
+			else
+				surface.SetTextPos( 50, ScrH() - 270 - h / 2 )
+			end
+		else
+			if PlySecondaryAmmo > 0 and TotalAmmo > 0 then
+				surface.SetTextPos( 320, ScrH() - 75 - h / 2 )
+			else
+				surface.SetTextPos( 320, ScrH() - 65 - h / 2 )
+			end
+		end
+
+		if PlyAmmo < 0 then
+			surface.DrawText( TotalAmmo )
+		else
+			if TotalAmmo > 0 then
+				surface.DrawText( PlyAmmo .. " / " .. TotalAmmo )
+			else
 				surface.DrawText( PlySecondaryAmmo )
 			end
+		end
 
+		if PlySecondaryAmmo > 0 and TotalAmmo > 0 then
 			if Up then
-				DrawGunRect( 30, ScrH() - 280 )
+				surface.SetTextPos( 50, ScrH() - 270 )
 			else
-				DrawGunRect( 300, ScrH() - 75 )
+				surface.SetTextPos( 320, ScrH() - 60 )
 			end
+			surface.DrawText( PlySecondaryAmmo )
+		end
+
+		if Up then
+			DrawGunRect( 30, ScrH() - 280 )
+		else
+			DrawGunRect( 300, ScrH() - 75 )
 		end
 	end
 end )
